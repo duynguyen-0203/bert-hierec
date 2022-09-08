@@ -24,9 +24,9 @@ class NewsEncoder(ABC, RobertaPreTrainedModel):
     def forward(self, encoding: torch.tensor, attention_mask: torch.tensor):
         """
         Forward propagation
-        :param encoding: [batch_size, seq_length]
-        :param attention_mask: [batch_size, seq_length]
-        :return: [batch_size, embed_dim]
+        :param encoding: shape [batch_size, seq_length]
+        :param attention_mask: shape [batch_size, seq_length]
+        :return: shape [batch_size, embed_dim]
         """
         word_embed = self.roberta(input_ids=encoding, attention_mask=attention_mask)[0]
         word_embed = self.word_embed_dropout(word_embed)

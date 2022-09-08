@@ -7,7 +7,7 @@ from src.model.news_encoder import NewsEncoder
 
 class UserEncoder(nn.Module):
     def __init__(self, news_encoder: NewsEncoder, num_category: int, category_embed_dim: int, his_length: int,
-                 num_click_embed_dim: int):
+                 num_click_embed_dim: int, dropout: float):
         super().__init__()
         self.news_encoder = news_encoder
         self.category_embedding = nn.Parameter(data=nn.init.constant_(torch.empty(num_category, category_embed_dim),
@@ -17,6 +17,7 @@ class UserEncoder(nn.Module):
         self.init_category_attn_weight = nn.Linear(in_features=news_encoder.embedding_dim, out_features=1, bias=False)
         self.num_click_embedding_layer = nn.Embedding(num_embeddings=his_length + 1, embedding_dim=num_click_embed_dim)
         self.num_click_scorer = nn.Linear(in_features=num_click_embed_dim, out_features=1)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, encoding: torch.tensor, attention_mask: torch.tensor, category_mask: torch.tensor):
         """
@@ -24,7 +25,7 @@ class UserEncoder(nn.Module):
         :param encoding: shape [batch_size, his_length, seq_length]
         :param attention_mask: shape [batch_size, his_length, seq_length]
         :param category_mask: shape [batch_size, num_category, his_length]
-        :return:
+        :return: shape [batch_size, num_category, embed_dim], shape [batch_size, embed_dim]
         """
         batch_size = encoding.shape[0]
         his_length = encoding.shape[1]
@@ -35,6 +36,7 @@ class UserEncoder(nn.Module):
         attention_mask = attention_mask.view(batch_size * his_length, -1)
         news_repr = self.news_encoder(encoding=encoding, attention_mask=attention_mask)
         news_repr = news_repr.view(batch_size, his_length, -1)
+        news_repr = self.dropout(news_repr)
 
         # Topic-level interest representation
         news_attn_weight = self.init_news_attn_weight(news_repr).squeeze(dim=2)
@@ -58,27 +60,3 @@ class UserEncoder(nn.Module):
         user_repr = torch.bmm(final_attn_weight.unsqueeze(dim=1), category_repr).squeeze(dim=1)
 
         return category_repr, user_repr
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
