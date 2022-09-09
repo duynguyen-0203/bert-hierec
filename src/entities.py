@@ -5,8 +5,6 @@ import torch
 from torch.utils.data import Dataset as TorchDataset
 from transformers import PreTrainedTokenizer
 
-from src import utils
-
 
 class News:
     def __init__(self, news_id: str, title: List[int], sapo: List[int], category: int):
@@ -80,14 +78,13 @@ class Dataset(TorchDataset):
     TRAIN_MODE = 'train'
     EVAL_MODE = 'eval'
 
-    def __init__(self, data_name: str, tokenizer: PreTrainedTokenizer, category_pad_token_id: int, max_his_click: int):
+    def __init__(self, data_name: str, tokenizer: PreTrainedTokenizer, num_category: int):
         super().__init__()
         self._name = data_name
         self._samples = OrderedDict()
         self._mode = Dataset.TRAIN_MODE
         self._tokenizer = tokenizer
-        self._category_pad_token_id = category_pad_token_id
-        self._max_his_click = max_his_click
+        self._num_category = num_category
 
         self._news_id = 0
         self._id = 0
@@ -120,8 +117,7 @@ class Dataset(TorchDataset):
     def news_count(self) -> int:
         return self._news_id
 
-    @property
-    def __len__(self) -> int:
+    def __len__(self):
         if self._mode == Dataset.TRAIN_MODE:
             return len(self.samples)
         else:
@@ -131,30 +127,44 @@ class Dataset(TorchDataset):
         sample = self.samples[i]
 
         if self._mode == Dataset.TRAIN_MODE:
-            return create_train_sample(sample, self._tokenizer, self._category_pad_token_id, self._max_his_click)
+            return create_train_sample(sample, self._tokenizer, self._num_category)
         else:
-            return create_eval_sample(sample, self._tokenizer, self._category_pad_token_id, self._max_his_click)
+            return create_eval_sample(sample, self._tokenizer, self._num_category)
 
 
-def _create_sample(sample: Sample, tokenizer: PreTrainedTokenizer, category_pad_token_id: int, max_his_click: int)\
-        -> dict:
+def _create_sample(sample: Sample, tokenizer: PreTrainedTokenizer, num_category: int) -> dict:
     # History click
     title_clicked_news_encoding = [news.title for news in sample.clicked_news]
-    sapo_clicked_news_encoding = [news.sapo for news in sample.clicked_news]
     category_clicked_news_encoding = [news.category for news in sample.clicked_news]
-    if len(sample.clicked_news) < max_his_click:
-        
+
+    # Impression
+    title_impression_encoding = [news.title for news in sample.impression.news]
+    category_impression_encoding = [news.category for news in sample.impression.news]
+
+    # Create tensor
+    impression_id = torch.tensor(sample.impression.impression_id)
+    title_clicked_news_encoding = torch.tensor(title_clicked_news_encoding)
+    title_impression_encoding = torch.tensor(title_impression_encoding)
+    # Create mask
+    his_mask = (title_clicked_news_encoding != tokenizer.pad_token_id)
+    candidate_mask = (title_impression_encoding != tokenizer.pad_token_id)
+    history_category_mask = torch.zeros(his_mask.shape[0], num_category, dtype=bool)
+    history_category_mask = history_category_mask.scatter_(
+        1, torch.tensor(category_clicked_news_encoding).unsqueeze(dim=1), 1)
+    history_category_mask = torch.transpose(history_category_mask, 0, 1)
+    candidate_category_mask = torch.zeros(candidate_mask.shape[0], num_category, dtype=bool)
+    candidate_category_mask = candidate_category_mask.scatter_(
+        1, torch.tensor(category_impression_encoding).unsqueeze(dim=1), 1)
+
+    return dict(impression_id=impression_id, candidate_encoding=title_impression_encoding,
+                candidate_attn_mask=candidate_mask, candidate_category_mask=candidate_category_mask,
+                history_encoding=title_clicked_news_encoding, history_attn_mask=his_mask,
+                history_category_mask=history_category_mask)
 
 
+def create_train_sample(sample: Sample, tokenizer: PreTrainedTokenizer, num_category: int) -> dict:
+    return _create_sample(sample, tokenizer, num_category)
 
 
-
-def create_train_sample(sample: Sample, tokenizer: PreTrainedTokenizer, category_pad_token_id: int, max_his_click: int)\
-        -> dict:
-    return _create_sample(sample, tokenizer, category_pad_token_id, max_his_click)
-
-
-def create_eval_sample(sample: Sample, tokenizer: PreTrainedTokenizer, category_pad_token_id: int, max_his_click: int)\
-        -> dict:
-    return _create_sample(sample, tokenizer, category_pad_token_id, max_his_click)
-
+def create_eval_sample(sample: Sample, tokenizer: PreTrainedTokenizer, num_category: int) -> dict:
+    return _create_sample(sample, tokenizer, num_category)
