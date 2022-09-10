@@ -16,7 +16,6 @@ class BaseEvaluator(ABC):
         self.dataset = dataset
         self.prob_predictions = []
         self.targets = []
-        self.impression_ids = []
         self._convert_targets()
 
     @abstractmethod
@@ -63,6 +62,37 @@ class BaseEvaluator(ABC):
                     save_scores(os.path.join(path, f'ndcg{k}.txt'), list_score)
 
         return scores
+
+
+class FastEvaluator(BaseEvaluator):
+    def __init__(self, dataset: Dataset):
+        super().__init__(dataset)
+
+    def _convert_pred(self):
+        pass
+
+
+class SlowEvaluator(BaseEvaluator):
+    def __init__(self, dataset: Dataset):
+        super().__init__(dataset)
+        self.impression_ids = []
+
+    def _convert_targets(self):
+        group_labels = {}
+        for sample in self.dataset.samples:
+            impression_id = sample.impression.impression_id
+            group_labels[impression_id] = group_labels.get(impression_id, []) + sample.impression.label
+
+        group_labels = sorted(group_labels.items())
+        self.targets = [i[1] for i in group_labels]
+
+    def _convert_pred(self):
+        group_predictions = {}
+        for prob_prediction, impression_id in zip(self.prob_predictions, self.impression_ids):
+            group_predictions[impression_id] = group_predictions.get(impression_id, []) + prob_prediction
+
+        group_predictions = sorted(group_predictions)
+
 
 
 def compute_mrr_score(y_true: np.ndarray, y_score: np.ndarray):
