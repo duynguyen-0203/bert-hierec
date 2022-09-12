@@ -46,16 +46,16 @@ class Trainer(BaseTrainer):
         # Read data
         reader = Reader(tokenizer=self._tokenizer, max_title_length=args.max_title_length,
                         max_sapo_length=args.max_sapo_length, user2id=self._user2id, category2id=self._category2id,
-                        max_his_click=args.max_his_click, npratio=args.npratio)
-        train_dataset = reader.read_train_dataset(args.data_name, args.news_path, args.train_behaviors_path)
+                        max_his_click=args.his_length, npratio=args.npratio)
+        train_dataset = reader.read_train_dataset(args.data_name, args.train_news_path, args.train_behaviors_path)
         train_dataset.set_mode(Dataset.TRAIN_MODE)
         train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=False,
                                       num_workers=args.dataloader_num_workers, collate_fn=self._collate_fn,
                                       drop_last=args.dataloader_drop_last, pin_memory=args.dataloader_pin_memory)
         if args.fast_eval:
-            eval_dataset = reader.read_train_dataset(args.data_name, args.news_path, args.eval_behaviors_path)
+            eval_dataset = reader.read_train_dataset(args.data_name, args.eval_news_path, args.eval_behaviors_path)
         else:
-            eval_dataset = reader.read_eval_dataset(args.data_name, args.news_path, args.eval_behaviors_path)
+            eval_dataset = reader.read_eval_dataset(args.data_name, args.eval_news_path, args.eval_behaviors_path)
         self._log_dataset(train_dataset, eval_dataset)
 
         total_train_batch_size = args.train_batch_size * args.gradient_accumulation_steps
@@ -81,7 +81,7 @@ class Trainer(BaseTrainer):
         config = RobertaConfig.from_pretrained(args.pretrained_embedding)
         news_encoder = NewsEncoder.from_pretrained(args.pretrained_embedding, config=config,
                                                    word_embed_dim=args.word_embed_dim, num_heads=args.num_heads,
-                                                   query_dim=args.query_dim, self_attn_droput=args.attn_dropout,
+                                                   query_dim=args.query_dim, self_attn_dropout=args.attn_dropout,
                                                    dropout=args.dropout)
         user_encoder = UserEncoder(news_encoder=news_encoder, num_category=len(self._category2id),
                                    category_embed_dim=args.category_embed_dim, his_length=args.his_length,
@@ -289,7 +289,7 @@ class Trainer(BaseTrainer):
 
     @staticmethod
     def _forward_step(model, batch):
-        logits = model(candidate_encodings=batch['candidate_encoding'],
+        logits = model(candidate_encoding=batch['candidate_encoding'],
                        candidate_attn_mask=batch['candidate_attn_mask'],
                        candidate_category_mask=batch['candidate_category_mask'],
                        history_encoding=batch['history_encoding'], history_attn_mask=batch['history_attn_mask'],

@@ -29,9 +29,10 @@ class NewsEncoder(ABC, RobertaPreTrainedModel):
         :return: shape [batch_size, embed_dim]
         """
         word_embed = self.roberta(input_ids=encoding, attention_mask=attention_mask)[0]
+        word_embed = self.reduce_dim(word_embed)
         word_embed = self.word_embed_dropout(word_embed)
-        word_repr = self.self_attn(query=word_embed, key=word_embed, value=word_embed,
-                                   key_padding_mask=~attention_mask, need_weights=False)
+        word_repr, _ = self.self_attn(query=word_embed, key=word_embed, value=word_embed,
+                                   key_padding_mask=~attention_mask)
         word_repr = self.word_context_dropout(word_repr)
         news_repr = self.attention(embedding=word_repr, attention_mask=attention_mask)
 
