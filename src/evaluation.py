@@ -7,6 +7,7 @@ from typing import List
 import numpy as np
 from sklearn.metrics import roc_auc_score
 import torch
+import torch.nn.functional as torch_f
 
 from src.entities import Dataset
 
@@ -30,7 +31,7 @@ class BaseEvaluator(ABC):
     def eval_batch(self, logits: torch.tensor, impression_ids: torch.tensor):
         pass
 
-    def _compute_scores(self, metrics: List[str], save_result: bool, path: str = None):
+    def compute_scores(self, metrics: List[str], save_result: bool, path: str = None):
         self._convert_pred()
         assert len(self.targets) == len(self.prob_predictions)
         targets = flatten(self.targets)
@@ -68,8 +69,22 @@ class FastEvaluator(BaseEvaluator):
     def __init__(self, dataset: Dataset):
         super().__init__(dataset)
 
+    def _convert_targets(self):
+        for sample in self.dataset.samples:
+            self.targets.append(sample.impression.label)
+
     def _convert_pred(self):
         pass
+
+    def eval_batch(self, logits: torch.tensor, impression_ids: torch.tensor):
+        """
+        Evaluation a batch
+        :param logits: shape [batch_size, npratio + 1]
+        :param impression_ids: shape [batch_size, npratio + 1]
+        :return: None
+        """
+        probs = torch_f.softmax(logits, dim=1)
+        self.prob_predictions.extend(probs.tolist())
 
 
 class SlowEvaluator(BaseEvaluator):
@@ -91,8 +106,19 @@ class SlowEvaluator(BaseEvaluator):
         for prob_prediction, impression_id in zip(self.prob_predictions, self.impression_ids):
             group_predictions[impression_id] = group_predictions.get(impression_id, []) + prob_prediction
 
-        group_predictions = sorted(group_predictions)
+        group_predictions = sorted(group_predictions.items())
+        self.prob_predictions = [i[1] for i in group_predictions]
 
+    def eval_batch(self, logits: torch.tensor, impression_ids: torch.tensor):
+        """
+        Evaluation a batch
+        :param logits: shape [batch_size, npratio + 1]
+        :param impression_ids: shape [batch_size, npratio + 1]
+        :return: None
+        """
+        probs = torch.sigmoid(logits)
+        self.prob_predictions.extend(probs.tolist())
+        self.impression_ids.extend(impression_ids.tolist())
 
 
 def compute_mrr_score(y_true: np.ndarray, y_score: np.ndarray):

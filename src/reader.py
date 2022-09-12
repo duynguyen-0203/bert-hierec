@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 from transformers import PreTrainedTokenizer
 
+from src import constants
 from src.entities import Dataset, News
 
 
@@ -43,6 +44,12 @@ class Reader:
         return dataset, news_dataset
 
     def _read_news_info(self, news_path, dataset: Dataset) -> dict:
+        """
+        Read news information
+        :param news_path:
+        :param dataset:
+        :return:
+        """
         pad_news_obj = dataset.create_news([self._tokenizer.pad_token_id] * self._max_title_length,
                                            [self._tokenizer.pad_token_id] * self._max_sapo_length,
                                            self._category2id['pad'])
@@ -50,13 +57,15 @@ class Reader:
         with open(news_path, mode='r', encoding='utf-8', newline='') as f:
             news_tsv = csv.reader(f, delimiter='\t')
             for line in news_tsv:
-                title_encoding = self._tokenizer.encode(line[1], add_special_tokens=True, padding='max_length',
-                                                        truncation=True, max_length=self._max_title_length)
-                category_id = self._category2id.get(line[2], self._category2id['unk'])
-                sapo_encoding = self._tokenizer.encode(line[3], add_special_tokens=True, padding='max_length',
-                                                       truncation=True, max_length=self._max_sapo_length)
+                title_encoding = self._tokenizer.encode(line[constants.TITLE], add_special_tokens=True,
+                                                        padding='max_length', truncation=True,
+                                                        max_length=self._max_title_length)
+                category_id = self._category2id.get(line[constants.CATEGORY], self._category2id['unk'])
+                sapo_encoding = self._tokenizer.encode(line[constants.SAPO], add_special_tokens=True,
+                                                       padding='max_length', truncation=True,
+                                                       max_length=self._max_sapo_length)
                 news = dataset.create_news(title_encoding, sapo_encoding, category_id)
-                news_dataset[line[0]] = news
+                news_dataset[line[constants.NEWS_ID]] = news
 
         return news_dataset
 
@@ -69,14 +78,14 @@ class Reader:
         :param dataset: Dataset object
         :return: None
         """
-        user_id = self._user2id.get(line[1], self._user2id['unk'])
-        history_clicked = [news_dataset[news_id] for news_id in line[3].split()]
+        user_id = self._user2id.get(line[constants.USER_ID], self._user2id['unk'])
+        history_clicked = [news_dataset[news_id] for news_id in line[constants.HISTORY].split()]
         history_clicked = [news_dataset['pad']] * (self._max_his_click - len(history_clicked)) + history_clicked[
                                                                                                  :self._max_his_click]
-        pos_news = [news_dataset[news_id] for news_id, label in [behavior.split('-') for behavior in line[4].split()]
-                    if label == '1']
-        neg_news = [news_dataset[news_id] for news_id, label in [behavior.split('-') for behavior in line[4].split()]
-                    if label == '0']
+        pos_news = [news_dataset[news_id] for news_id, label in
+                    [behavior.split('-') for behavior in line[constants.BEHAVIOR].split()] if label == '1']
+        neg_news = [news_dataset[news_id] for news_id, label in
+                    [behavior.split('-') for behavior in line[constants.BEHAVIOR].split()] if label == '0']
         for news in pos_news:
             label = [1] + [0] * self._npratio
             list_news = [news] + sample_news(neg_news, self._npratio, news_dataset['pad'])
@@ -95,11 +104,11 @@ class Reader:
         :param dataset: Dataset object
         :return:
         """
-        user_id = self._user2id.get(line[1], self._user2id['unk'])
-        history_clicked = [news_dataset[news_id] for news_id in line[3].split()]
+        user_id = self._user2id.get(line[constants.USER_ID], self._user2id['unk'])
+        history_clicked = [news_dataset[news_id] for news_id in line[constants.HISTORY].split()]
         history_clicked = [news_dataset['pad']] * (self._max_his_click - len(history_clicked)) + history_clicked[
                                                                                                  :self._max_his_click]
-        for behavior in line[4].split():
+        for behavior in line[constants.BEHAVIOR].split():
             news_id, label = behavior.split('-')
             impression = dataset.create_impression(impression_id, user_id, [news_id], [label])
             dataset.add_sample(user_id, history_clicked, impression)

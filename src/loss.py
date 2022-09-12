@@ -17,12 +17,23 @@ class Loss(AbstractLoss):
     def compute(self, logits: torch.tensor, labels: torch.tensor):
         """
         Compute batch loss
-        :param logits: shape [batch_size, K + 1]
-        :param labels: one-hot vector [batch_size, K + 1]
+        :param logits: shape [batch_size, npratio + 1]
+        :param labels: one-hot vector [batch_size, npratio + 1]
         :return: Loss value
         """
-        log_probs = torch_f.log_softmax(logits, dim=1)
         targets = labels.argmax(dim=1)
-        loss = self._criterion(log_probs, targets)
+        loss = self._criterion(logits, targets)
 
         return loss
+
+    @staticmethod
+    def compute_eval_loss(logits: torch.tensor, labels: torch.tensor):
+        """
+        Compute loss for evaluation phase
+        :param logits: shape [batch_size, 1]
+        :param labels: shape [batch_size, 1] (binary value)
+        :return: Float number
+        """
+        loss = -(torch_f.logsigmoid(logits) * labels).sum()
+
+        return loss.item()
