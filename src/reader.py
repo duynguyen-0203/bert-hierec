@@ -25,6 +25,8 @@ class Reader:
             behaviors_tsv = csv.reader(f, delimiter='\t')
             for i, line in enumerate(behaviors_tsv):
                 self._parse_train_line(i, line, news_dataset, dataset)
+                if i == 7:
+                    break
 
         return dataset
 
@@ -34,11 +36,13 @@ class Reader:
             behaviors_tsv = csv.reader(f, delimiter='\t')
             for i, line in enumerate(behaviors_tsv):
                 self._parse_eval_line(i, line, news_dataset, dataset)
+                if i == 31:
+                    break
 
         return dataset
 
     def _read(self, data_name: str, news_path: str) -> Tuple[Dataset, dict]:
-        dataset = Dataset(data_name, self._tokenizer, len(self._category2id))
+        dataset = Dataset(data_name, self._tokenizer, self._category2id)
         news_dataset = self._read_news_info(news_path, dataset)
 
         return dataset, news_dataset
@@ -110,7 +114,7 @@ class Reader:
                                                                                                  :self._max_his_click]
         for behavior in line[constants.BEHAVIOR].split():
             news_id, label = behavior.split('-')
-            impression = dataset.create_impression(impression_id, user_id, [news_id], [label])
+            impression = dataset.create_impression(impression_id, user_id, [news_dataset[news_id]], [int(label)])
             dataset.add_sample(user_id, history_clicked, impression)
 
 

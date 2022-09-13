@@ -39,6 +39,7 @@ class Trainer(BaseTrainer):
                 self.scaler = None
 
     def train(self):
+        torch.autograd.set_detect_anomaly(True)
         args = self.args
         self._log_arguments()
         self._logger.info(f'Model: {args.model_name}')
@@ -85,7 +86,8 @@ class Trainer(BaseTrainer):
                                                    dropout=args.dropout)
         user_encoder = UserEncoder(news_encoder=news_encoder, num_category=len(self._category2id),
                                    category_embed_dim=args.category_embed_dim, his_length=args.his_length,
-                                   num_click_embed_dim=args.num_click_embed_dim, dropout=args.dropout)
+                                   num_click_embed_dim=args.num_click_embed_dim, dropout=args.dropout,
+                                   category_pad_token_id=self._category2id['pad'])
         model = HieRec(news_encoder=news_encoder, user_encoder=user_encoder, dropout=args.dropout,
                        score_weight=args.score_weight)
         model.to(self._device)
@@ -293,5 +295,8 @@ class Trainer(BaseTrainer):
                        candidate_attn_mask=batch['candidate_attn_mask'],
                        candidate_category_mask=batch['candidate_category_mask'],
                        history_encoding=batch['history_encoding'], history_attn_mask=batch['history_attn_mask'],
-                       history_category_mask=batch['history_category_mask'])
+                       history_category_mask=batch['history_category_mask'],
+                       candidate_category_ratio=batch['candidate_category_ratio'],
+                       history_category_count_mask=batch['history_category_count_mask'])
+        print(logits)
         return logits
