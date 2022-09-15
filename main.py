@@ -16,7 +16,7 @@ def _eval(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Arguments for NAML model', fromfile_prefix_chars='@',
+    parser = argparse.ArgumentParser(description='Arguments for HieRec model', fromfile_prefix_chars='@',
                                      allow_abbrev=False)
     parser.convert_arg_line_to_args = utils.convert_arg_line_to_args
     subparsers = parser.add_subparsers(dest='mode', help='Mode of the process: train or test')
