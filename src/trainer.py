@@ -39,7 +39,6 @@ class Trainer(BaseTrainer):
                 self.scaler = None
 
     def train(self):
-        torch.autograd.set_detect_anomaly(True)
         args = self.args
         self._log_arguments()
         self._logger.info(f'Model: {args.model_name}')
@@ -260,7 +259,7 @@ class Trainer(BaseTrainer):
 
     @staticmethod
     def _create_loss():
-        criterion = nn.NLLLoss(reduction='mean')
+        criterion = nn.CrossEntropyLoss(reduction='mean')
         loss_calculator = Loss(criterion)
 
         return loss_calculator
@@ -298,5 +297,4 @@ class Trainer(BaseTrainer):
                        history_category_mask=batch['history_category_mask'],
                        candidate_category_ratio=batch['candidate_category_ratio'],
                        history_category_count_mask=batch['history_category_count_mask'])
-        print(logits)
         return logits

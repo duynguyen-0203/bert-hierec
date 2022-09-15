@@ -24,20 +24,20 @@ class NewsEncoder(ABC, RobertaPreTrainedModel):
     def forward(self, encoding: torch.tensor, attention_mask: torch.tensor):
         """
         Forward propagation
-        :param encoding: shape [batch_size, seq_length]
-        :param attention_mask: shape [batch_size, seq_length]
-        :return: shape [batch_size, embed_dim]
+        :param encoding: Indices of input sequence tokens in the vocabulary
+        :param attention_mask: The attention mask of the encoding
+        :type encoding: torch.tensor, shape [batch_size, seq_length, embed_dim]
+        :type encoding: torch.tensor, shape [batch_size, seq_length]
+        :return: A text representation
+        :rtype: torch.tensor, shape [batch_size, embed_dim]
         """
-        # import pdb; pdb.set_trace()
         word_embed = self.roberta(input_ids=encoding, attention_mask=attention_mask)[0]
         word_embed = self.reduce_dim(word_embed)
         word_embed = self.word_embed_dropout(word_embed)
         word_repr, _ = self.self_attn(query=word_embed, key=word_embed, value=word_embed,
                                       key_padding_mask=~attention_mask)
-        word_repr = torch.nan_to_num(word_repr)
         word_repr = self.word_context_dropout(word_repr)
         news_repr = self.attention(embedding=word_repr, attention_mask=attention_mask)
-        # import pdb; pdb.set_trace()
 
         return news_repr
 
@@ -55,17 +55,18 @@ class AttentivePooling(nn.Module):
     def forward(self, embedding: torch.tensor, attention_mask: torch.tensor):
         """
         Forward propagation
-        :param embedding: shape [batch_size, title_length]
-        :param attention_mask: shape [batch_size, title_length]
-        :return:
+        :param embedding: The sequence of word representations is to be aggregated into a text representation
+        :param attention_mask: The attention mask of the embedding
+        :type embedding: torch.tensor, shape [batch_size, title_length, embed_dim]
+        :type attention_mask: torch.tensor, shape [batch_size, title_length]
+        :return: A text representation
+        :rtype: torch.tensor, shape [batch_size, embed_dim]
         """
         attn_weight = self.linear1(embedding)
         attn_weight = torch.tanh(attn_weight)
         attn_weight = self.linear2(attn_weight).squeeze(dim=2)
-        # attn_weight.masked_fill_(~attention_mask, float('-inf'))
-        attn_weight.masked_fill_(~attention_mask, 1e-9)
+        attn_weight.masked_fill_(~attention_mask, float('-inf'))
         attn_weight = torch_f.softmax(attn_weight, dim=1)
-        # attn_weight = torch.nan_to_num(attn_weight)
         seq_repr = torch.bmm(attn_weight.unsqueeze(dim=1), embedding).squeeze(dim=1)
 
         return seq_repr

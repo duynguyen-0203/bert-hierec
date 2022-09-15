@@ -44,22 +44,19 @@ class UserEncoder(nn.Module):
         # Topic-level interest representation
         news_attn_weight = self.init_news_attn_weight(news_repr).squeeze(dim=2)
         news_attn_weight = news_attn_weight.unsqueeze(dim=1).expand(news_attn_weight.shape[0], num_category, -1).clone()
-        # news_attn_weight.masked_fill_(~category_mask, float('-inf'))
-        news_attn_weight.masked_fill_(~category_mask, 1e-9)
+        news_attn_weight.masked_fill_(~category_mask, 1e-30)
         news_attn_weight = torch_f.softmax(news_attn_weight, dim=2)
-        # news_attn_weight = torch.nan_to_num(news_attn_weight)
 
         category_interest_repr = torch.bmm(news_attn_weight, news_repr)
         category_repr = category_interest_repr + self.category_embedding
 
-        # import pdb; pdb.set_trace()
         # User-level interest representation
         category_attn_weight = self.init_category_attn_weight(category_repr).squeeze(dim=2)
         category_count = category_mask.long().sum(-1, keepdims=False)
         num_click_embedding = self.num_click_embedding_layer(category_count)
         num_click_score = self.num_click_scorer(num_click_embedding).squeeze(dim=2)
         final_attn_weight = category_attn_weight + num_click_score
-        final_attn_weight.masked_fill_(~category_count_mask, float('-inf'))
+        final_attn_weight.masked_fill_(~category_count_mask, 1e-30)
         final_attn_weight = torch_f.softmax(final_attn_weight, dim=1)
         user_repr = torch.bmm(final_attn_weight.unsqueeze(dim=1), category_repr).squeeze(dim=1)
 

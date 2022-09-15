@@ -48,6 +48,6 @@ class HieRec(nn.Module):
         category_score = category_score * candidate_category_ratio
 
         logits = self.user_score_weight * user_score + (1 - self.user_score_weight) * category_score
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
         return logits

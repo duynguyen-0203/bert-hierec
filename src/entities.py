@@ -118,10 +118,7 @@ class Dataset(TorchDataset):
         return self._news_id
 
     def __len__(self):
-        if self._mode == Dataset.TRAIN_MODE:
-            return len(self.samples)
-        else:
-            return len(set([sample.impression.impression_id for sample in self.samples]))
+        return len(self.samples)
 
     def __getitem__(self, i: int):
         sample = self.samples[i]

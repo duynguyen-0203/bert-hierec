@@ -25,8 +25,6 @@ class Reader:
             behaviors_tsv = csv.reader(f, delimiter='\t')
             for i, line in enumerate(behaviors_tsv):
                 self._parse_train_line(i, line, news_dataset, dataset)
-                if i == 7:
-                    break
 
         return dataset
 
@@ -36,8 +34,6 @@ class Reader:
             behaviors_tsv = csv.reader(f, delimiter='\t')
             for i, line in enumerate(behaviors_tsv):
                 self._parse_eval_line(i, line, news_dataset, dataset)
-                if i == 31:
-                    break
 
         return dataset
 
@@ -54,9 +50,10 @@ class Reader:
         :param dataset:
         :return:
         """
-        pad_news_obj = dataset.create_news([self._tokenizer.pad_token_id] * self._max_title_length,
-                                           [self._tokenizer.pad_token_id] * self._max_sapo_length,
-                                           self._category2id['pad'])
+        pad_news_obj = dataset.create_news(
+            [self._tokenizer.eos_token_id] + [self._tokenizer.pad_token_id] * (self._max_title_length - 1),
+            [self._tokenizer.eos_token_id] + [self._tokenizer.pad_token_id] * self._max_sapo_length,
+            self._category2id['pad'])
         news_dataset = {'pad': pad_news_obj}
         with open(news_path, mode='r', encoding='utf-8', newline='') as f:
             news_tsv = csv.reader(f, delimiter='\t')

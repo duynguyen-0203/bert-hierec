@@ -136,18 +136,20 @@ class BaseTrainer(ABC):
         :param epoch:
         :return:
         """
-        self._logger.info(f'------  Epoch {epoch} summary  ------')
+        self._logger.info(f'------  Epoch {epoch} Summary  ------')
+        self._logger.info(f'Training loss: {train_loss}')
         data = [epoch, train_loss]
         self._writer.add_scalar('Training loss per epoch', train_loss, global_step=epoch)
         if 'loss' in self.args.evaluation_info:
             data.append(valid_loss)
-            self._logger.info(f'Loss {valid_loss}')
+            self._logger.info(f'Validation loss: {valid_loss}')
             self._writer.add_scalar('Validation loss per epoch', valid_loss, global_step=epoch)
         if 'metrics' in self.args.evaluation_info:
             for metric, score in scores.items():
                 self._logger.info(f'{metric}: {score}')
             data.extend(list(scores.values()))
             self._writer.add_scalar('Validation AUC score per epoch', scores['auc'], global_step=epoch)
+        logger_utils.log_csv(self._eval_epoch, data)
 
     def _log_eval(self, global_step, loss: float = None, scores: dict = None):
         """

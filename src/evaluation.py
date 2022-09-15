@@ -33,7 +33,6 @@ class BaseEvaluator(ABC):
 
     def compute_scores(self, metrics: List[str], save_result: bool, path: str = None):
         self._convert_pred()
-        import pdb; pdb.set_trace()
         assert len(self.targets) == len(self.prob_predictions)
         targets = flatten(self.targets)
         prob_predictions = flatten(self.prob_predictions)
@@ -117,7 +116,6 @@ class SlowEvaluator(BaseEvaluator):
         :param impression_ids: shape [batch_size, npratio + 1]
         :return: None
         """
-        import pdb; pdb.set_trace()
         probs = torch.sigmoid(logits)
         self.prob_predictions.extend(probs.tolist())
         self.impression_ids.extend(impression_ids.tolist())
